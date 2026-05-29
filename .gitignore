@@ -1,0 +1,18 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/temp_audio/
+backend/.env
+backend/test_*.py
+
+# Node/React
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Samples
+sample_lecture.mp3
