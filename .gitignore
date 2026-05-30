@@ -16,3 +16,7 @@ Thumbs.db
 
 # Samples
 sample_lecture.mp3
+
+# Project Specific
+backend/lectures.db
+backend/exported_pdfs/
