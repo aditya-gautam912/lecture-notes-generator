@@ -1,9 +1,15 @@
 :root {
   --primary-color: #2563eb;
   --secondary-color: #f8fafc;
-  --text-color: #1e293b;
-  --border-color: #e2e8f0;
+  --text-color: #334155;
+  --heading-color: #0f172a; /* Deeper dark for headings */
+  --border-color: #cbd5e1;
   --sidebar-width: 280px;
+}
+
+h1, h2, h3 {
+  color: var(--heading-color);
+  font-weight: 700;
 }
 
 body {
@@ -146,6 +152,16 @@ body {
   border-radius: 0.75rem;
   margin-bottom: 1.5rem;
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  border: 1px solid var(--border-color);
+}
+
+.notes-view h3 {
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0.5rem;
+  margin-top: 0;
+  color: var(--heading-color);
+  font-weight: 700;
+  font-size: 1.25rem;
 }
 
 .transcript-box {
