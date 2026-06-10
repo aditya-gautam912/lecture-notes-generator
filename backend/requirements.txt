@@ -4,3 +4,5 @@ groq
 python-multipart
 python-dotenv
 fpdf2
+sqlalchemy
+pydantic

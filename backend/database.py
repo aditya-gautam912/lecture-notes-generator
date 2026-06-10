@@ -1,75 +1,76 @@
-import sqlite3
 import json
 from datetime import datetime
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-DB_NAME = "lectures.db"
+DB_NAME = "sqlite:///./lectures.db"
+engine = create_engine(DB_NAME, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+class Lecture(Base):
+    __tablename__ = "lectures"
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String, index=True)
+    transcript = Column(Text)
+    summary = Column(Text)
+    notes = Column(Text)
+    quiz = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 def init_db():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS lectures (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            filename TEXT,
-            transcript TEXT,
-            summary TEXT,
-            notes TEXT,
-            quiz TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-    conn.close()
+    Base.metadata.create_all(bind=engine)
 
 def save_lecture(filename, transcript, materials):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO lectures (filename, transcript, summary, notes, quiz)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (
-        filename, 
-        transcript, 
-        materials['summary'], 
-        json.dumps(materials['notes']), 
-        json.dumps(materials['quiz'])
-    ))
-    lecture_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    return lecture_id
+    db = SessionLocal()
+    try:
+        db_lecture = Lecture(
+            filename=filename,
+            transcript=transcript,
+            summary=materials['summary'],
+            notes=json.dumps(materials['notes']),
+            quiz=json.dumps(materials['quiz'])
+        )
+        db.add(db_lecture)
+        db.commit()
+        db.refresh(db_lecture)
+        return db_lecture.id
+    finally:
+        db.close()
 
 def get_all_lectures():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, filename, created_at FROM lectures ORDER BY created_at DESC')
-    rows = cursor.fetchall()
-    conn.close()
-    return [{"id": r[0], "filename": r[1], "date": r[2]} for r in rows]
+    db = SessionLocal()
+    try:
+        lectures = db.query(Lecture).order_by(Lecture.created_at.desc()).all()
+        return [{"id": r.id, "filename": r.filename, "date": r.created_at.isoformat()} for r in lectures]
+    finally:
+        db.close()
 
 def get_lecture_by_id(lecture_id):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM lectures WHERE id = ?', (lecture_id,))
-    row = cursor.fetchone()
-    conn.close()
-    if row:
-        return {
-            "id": row[0],
-            "filename": row[1],
-            "transcript": row[2],
-            "materials": {
-                "summary": row[3],
-                "notes": json.loads(row[4]),
-                "quiz": json.loads(row[5])
-            },
-            "date": row[6]
-        }
-    return None
+    db = SessionLocal()
+    try:
+        lecture = db.query(Lecture).filter(Lecture.id == lecture_id).first()
+        if lecture:
+            return {
+                "id": lecture.id,
+                "filename": lecture.filename,
+                "transcript": lecture.transcript,
+                "materials": {
+                    "summary": lecture.summary,
+                    "notes": json.loads(lecture.notes),
+                    "quiz": json.loads(lecture.quiz)
+                },
+                "date": lecture.created_at.isoformat()
+            }
+        return None
+    finally:
+        db.close()
 
 def delete_lecture(lecture_id):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute('DELETE FROM lectures WHERE id = ?', (lecture_id,))
-    conn.commit()
-    conn.close()
+    db = SessionLocal()
+    try:
+        db.query(Lecture).filter(Lecture.id == lecture_id).delete()
+        db.commit()
+    finally:
+        db.close()

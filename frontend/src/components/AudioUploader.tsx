@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 
 interface AudioUploaderProps {
   onProcessingStart: () => void;
+  onGenerateStart: () => void;
   onProcessingComplete: (data: any) => void;
   onError: (error: string) => void;
 }
 
-const AudioUploader: React.FC<AudioUploaderProps> = ({ onProcessingStart, onProcessingComplete, onError }) => {
+const AudioUploader: React.FC<AudioUploaderProps> = ({ onProcessingStart, onGenerateStart, onProcessingComplete, onError }) => {
   const [file, setFile] = useState<File | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -24,17 +25,39 @@ const AudioUploader: React.FC<AudioUploaderProps> = ({ onProcessingStart, onProc
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:8000/process-audio', {
+      // Step 1: Transcribe audio
+      const transcribeRes = await fetch('http://localhost:8000/transcribe', {
         method: 'POST',
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to process audio');
+      if (!transcribeRes.ok) {
+        throw new Error('Failed to transcribe audio');
+      }
+      
+      const transcribeData = await transcribeRes.json();
+
+      // Step 2: Generate notes
+      onGenerateStart();
+
+      const generateRes = await fetch('http://localhost:8000/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filename: transcribeData.filename,
+          transcript: transcribeData.transcript
+        }),
+      });
+
+      if (!generateRes.ok) {
+        throw new Error('Failed to generate study materials');
       }
 
-      const data = await response.json();
-      onProcessingComplete(data);
+      const generateData = await generateRes.json();
+      onProcessingComplete(generateData);
+
     } catch (err: any) {
       onError(err.message || 'An error occurred');
     }

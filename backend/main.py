@@ -4,6 +4,7 @@ import json
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from services.ai_service import transcribe_audio, generate_study_materials
 from services.pdf_service import create_lecture_pdf
 import database
@@ -28,8 +29,12 @@ os.makedirs(PDF_DIR, exist_ok=True)
 def startup_event():
     database.init_db()
 
-@app.post("/process-audio")
-async def process_audio(file: UploadFile = File(...)):
+class GenerateRequest(BaseModel):
+    filename: str
+    transcript: str
+
+@app.post("/transcribe")
+async def transcribe_endpoint(file: UploadFile = File(...)):
     file_path = None
     try:
         # 1. Save uploaded file temporarily
@@ -37,30 +42,37 @@ async def process_audio(file: UploadFile = File(...)):
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # 2. Transcribe
-        transcript = transcribe_audio(file_path)
+        # 2. Transcribe (async)
+        transcript = await transcribe_audio(file_path)
 
-        # 3. Generate notes, summary, quiz
-        study_materials_json = generate_study_materials(transcript)
-        study_materials = json.loads(study_materials_json)
-
-        # 4. Save to Database
-        lecture_id = database.save_lecture(file.filename, transcript, study_materials)
-
-        # 5. Clean up temp file
+        # 3. Clean up temp file
         os.remove(file_path)
+
+        return {"transcript": transcript, "filename": file.filename}
+
+    except Exception as e:
+        print(f"Error during transcription: {str(e)}")
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/generate")
+async def generate_endpoint(req: GenerateRequest):
+    try:
+        # 1. Generate notes, summary, quiz (async)
+        study_materials = await generate_study_materials(req.transcript)
+
+        # 2. Save to Database
+        lecture_id = database.save_lecture(req.filename, req.transcript, study_materials)
 
         return {
             "id": lecture_id,
-            "transcript": transcript,
+            "transcript": req.transcript,
             "materials": study_materials,
-            "filename": file.filename
+            "filename": req.filename
         }
-
     except Exception as e:
-        print(f"Error during processing: {str(e)}")
-        if file_path and os.path.exists(file_path):
-            os.remove(file_path)
+        print(f"Error during generation: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/history")

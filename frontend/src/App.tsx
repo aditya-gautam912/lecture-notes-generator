@@ -10,7 +10,7 @@ interface HistoryItem {
 }
 
 function App() {
-  const [processing, setProcessing] = useState(false);
+  const [processingState, setProcessingState] = useState<'idle' | 'loading' | 'transcribing' | 'generating'>('idle');
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -30,16 +30,16 @@ function App() {
   };
 
   const loadLecture = async (id: number) => {
-    setProcessing(true);
+    setProcessingState('loading');
     setError(null);
     try {
       const response = await fetch(`http://localhost:8000/history/${id}`);
       const result = await response.json();
       setData(result);
-      setProcessing(false);
+      setProcessingState('idle');
     } catch (err) {
       setError("Failed to load lecture from history");
-      setProcessing(false);
+      setProcessingState('idle');
     }
   };
 
@@ -56,19 +56,23 @@ function App() {
   };
 
   const handleStart = () => {
-    setProcessing(true);
+    setProcessingState('transcribing');
     setData(null);
     setError(null);
   };
 
+  const handleGenerateStart = () => {
+    setProcessingState('generating');
+  };
+
   const handleComplete = (result: any) => {
-    setProcessing(false);
+    setProcessingState('idle');
     setData(result);
     fetchHistory(); // Refresh history list
   };
 
   const handleError = (err: string) => {
-    setProcessing(false);
+    setProcessingState('idle');
     setError(err);
   };
 
@@ -76,7 +80,11 @@ function App() {
     <div className="app-wrapper">
       <aside className="sidebar">
         <h2>📚 Lecture History</h2>
-        <button className="new-lecture-btn" onClick={() => setData(null)}>
+        <button className="new-lecture-btn" onClick={() => {
+          setData(null);
+          setProcessingState('idle');
+          setError(null);
+        }}>
           + New Lecture
         </button>
         <div className="history-list">
@@ -104,15 +112,16 @@ function App() {
           <p>Turn your lectures into study guides in seconds.</p>
         </header>
 
-        {!data && !processing && (
+        {!data && processingState === 'idle' && (
           <AudioUploader 
             onProcessingStart={handleStart} 
+            onGenerateStart={handleGenerateStart}
             onProcessingComplete={handleComplete} 
             onError={handleError} 
           />
         )}
 
-        {processing && (
+        {processingState !== 'idle' && (
           <div className="loading-state">
             <div className="waveform">
               <div className="bar"></div>
@@ -121,7 +130,11 @@ function App() {
               <div className="bar"></div>
               <div className="bar"></div>
             </div>
-            <p>AI is analyzing your lecture... generating notes and quiz.</p>
+            <p>
+              {processingState === 'loading' && 'Loading lecture...'}
+              {processingState === 'transcribing' && 'AI is transcribing your audio...'}
+              {processingState === 'generating' && 'AI is analyzing transcript and generating notes...'}
+            </p>
           </div>
         )}
 
