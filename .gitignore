@@ -1,9 +1,12 @@
 # Python
 backend/venv/
 backend/__pycache__/
+**/__pycache__/
+*.pyc
 backend/temp_audio/
 backend/.env
 backend/test_*.py
+backend/test_lectures.db
 
 # Node/React
 frontend/node_modules/
