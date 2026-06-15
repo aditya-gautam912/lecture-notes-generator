@@ -15,6 +15,7 @@ function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+  const [uploadKey, setUploadKey] = useState(0);
   const { addToast } = useToast();
 
   const fetchHistory = useCallback(async () => {
@@ -107,6 +108,8 @@ function App() {
             setProcessingState('idle');
             setError(null);
             setSidebarOpen(false);
+            setUploadKey(k => k + 1);
+            window.scrollTo(0, 0);
           }}>
             + New Lecture
           </button>
@@ -144,6 +147,7 @@ function App() {
 
         {!data && processingState === 'idle' && !error && (
           <AudioUploader
+            key={uploadKey}
             onProcessingStart={handleStart}
             onGenerateStart={handleGenerateStart}
             onProcessingComplete={handleComplete}
@@ -153,6 +157,7 @@ function App() {
 
         {!data && (processingState === 'transcribing' || processingState === 'generating') && (
           <AudioUploader
+            key={uploadKey}
             onProcessingStart={handleStart}
             onGenerateStart={handleGenerateStart}
             onProcessingComplete={handleComplete}

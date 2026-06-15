@@ -124,10 +124,6 @@ def health_check():
     return {"status": "healthy"}
 
 FRONTEND_DIST = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')
-if not os.path.isdir(FRONTEND_DIST):
-    import subprocess
-    frontend_dir = os.path.join(os.path.dirname(__file__), '..', 'frontend')
-    subprocess.run("npm install && npm run build", shell=True, cwd=frontend_dir)
 if os.path.isdir(FRONTEND_DIST):
     app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")), name="assets")
 
