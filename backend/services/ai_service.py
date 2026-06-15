@@ -135,17 +135,21 @@ async def generate_study_materials(transcript: str):
 
 
 def _normalize_quiz(quiz: list[dict]) -> list[dict]:
+    result = []
     for item in quiz:
-        options = item.get("options", [])
-        answer = item.get("answer", "")
+        item_copy = dict(item)
+        options = item_copy.get("options", [])
+        answer = item_copy.get("answer", "")
         if answer in options:
+            result.append(item_copy)
             continue
         for opt in options:
             if opt.startswith(answer) or answer.startswith(opt):
-                item["answer"] = opt
+                item_copy["answer"] = opt
                 break
             prefix = opt.split(".")[0].split(")")[0].strip()
             if prefix and len(prefix) == 1 and answer == prefix:
-                item["answer"] = opt
+                item_copy["answer"] = opt
                 break
-    return quiz
+        result.append(item_copy)
+    return result

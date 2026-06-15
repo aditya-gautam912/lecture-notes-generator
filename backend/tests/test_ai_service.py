@@ -1,7 +1,8 @@
 import os
 import tempfile
+import copy
 from unittest.mock import patch, MagicMock
-from services.ai_service import _ensure_audio, _split_audio, _normalize_quiz, AUDIO_EXTENSIONS
+from services.ai_service import _ensure_audio, _split_audio, _normalize_quiz, AUDIO_EXTENSIONS, VIDEO_EXTENSIONS
 
 
 def make_temp_file(suffix: str, content: bytes = b"data") -> str:
@@ -31,22 +32,24 @@ class TestEnsureAudio:
             os.remove(path)
 
     def test_converts_video_to_mp3(self):
-        path = make_temp_file(".avi")
-        with patch.dict("sys.modules", {"pydub": mock_pydub_module()}):
-            result = _ensure_audio(path)
-        assert result != path
-        assert result.endswith(".mp3")
-        assert os.path.isfile(result)
-        os.remove(path)
-        os.remove(result)
+        for ext in VIDEO_EXTENSIONS:
+            path = make_temp_file(ext)
+            with patch.dict("sys.modules", {"pydub": mock_pydub_module()}):
+                result = _ensure_audio(path)
+            assert result != path, f"Failed for {ext}"
+            assert result.endswith(".mp3"), f"Expected .mp3 for {ext}"
+            assert os.path.isfile(result), f"Output missing for {ext}"
+            os.remove(path)
+            os.remove(result)
 
     def test_original_path_not_removed(self):
-        path = make_temp_file(".avi")
-        with patch.dict("sys.modules", {"pydub": mock_pydub_module()}):
-            result = _ensure_audio(path)
-        assert os.path.isfile(path)
-        os.remove(path)
-        os.remove(result)
+        for ext in VIDEO_EXTENSIONS:
+            path = make_temp_file(ext)
+            with patch.dict("sys.modules", {"pydub": mock_pydub_module()}):
+                result = _ensure_audio(path)
+            assert os.path.isfile(path), f"Original removed for {ext}"
+            os.remove(path)
+            os.remove(result)
 
 
 class TestNormalizeQuiz:
@@ -83,6 +86,12 @@ class TestNormalizeQuiz:
         result = _normalize_quiz(quiz)
         assert result[0]["answer"] == "Y. Two"
         assert result[1]["answer"] == "Blue"
+
+    def test_does_not_mutate_input(self):
+        quiz = [{"question": "Q?", "options": ["A. One", "B. Two"], "answer": "A"}]
+        original = copy.deepcopy(quiz)
+        _normalize_quiz(quiz)
+        assert quiz == original
 
 
 class TestSplitAudio:

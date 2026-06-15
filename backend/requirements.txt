@@ -7,3 +7,4 @@ fpdf2
 sqlalchemy
 pydantic
 pydub
+pytest-asyncio

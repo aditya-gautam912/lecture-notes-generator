@@ -6,6 +6,7 @@ import time
 from collections import defaultdict
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -15,20 +16,44 @@ import database
 
 app = FastAPI()
 
+ALLOWED_ORIGINS = [
+    "https://lecture-notes-generator-jkqv.onrender.com",
+    "http://localhost:5173",
+    "http://localhost:8000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+API_SECRET_KEY = os.getenv("API_SECRET_KEY", "")
+
+@ app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    if not API_SECRET_KEY:
+        return await call_next(request)
+    if request.url.path in ("/health", "/"):
+        return await call_next(request)
+    origin = request.headers.get("origin", "")
+    if origin in ALLOWED_ORIGINS or not origin:
+        return await call_next(request)
+    auth = request.headers.get("Authorization", "")
+    expected = f"Bearer {API_SECRET_KEY}"
+    if auth != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return await call_next(request)
+
 TEMP_DIR = "temp_audio"
 PDF_DIR = "exported_pdfs"
-MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
+MAX_FILE_SIZE = 100 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'.mp3', '.wav', '.m4a', '.aac', '.ogg', '.mp4', '.avi', '.mov', '.mkv', '.webm', '.flv'}
-RATE_LIMIT = 10  # requests per window
-RATE_WINDOW = 60  # seconds
+RATE_LIMIT = 10
+RATE_WINDOW = 60
+RATE_CLEANUP_INTERVAL = 300
 MAX_TRANSCRIPT_LEN = 100000
 
 os.makedirs(TEMP_DIR, exist_ok=True)
@@ -43,6 +68,12 @@ def rate_limit(ip: str):
     if len(rate_store[ip]) >= RATE_LIMIT:
         raise HTTPException(status_code=429, detail="Too many requests. Try again later.")
     rate_store[ip].append(now)
+
+    if int(now) % RATE_CLEANUP_INTERVAL == 0:
+        cutoff = now - RATE_WINDOW * 2
+        stale = [k for k, v in rate_store.items() if v and max(v) < cutoff]
+        for k in stale:
+            del rate_store[k]
 
 def sanitize_filename(name: str) -> str:
     name = os.path.basename(name)
