@@ -1,7 +1,19 @@
 from fpdf import FPDF
 import os
+import urllib.request
 
-FONT_PATH = os.path.join(os.path.dirname(__file__), '..', 'fonts', 'DejaVuSans.ttf')
+FONT_DIR = os.path.join(os.path.dirname(__file__), '..', 'fonts')
+FONT_PATH = os.path.join(FONT_DIR, 'DejaVuSans.ttf')
+FONT_URL = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
+
+if not os.path.isdir(FONT_DIR):
+    os.makedirs(FONT_DIR)
+
+if not os.path.isfile(FONT_PATH):
+    try:
+        urllib.request.urlretrieve(FONT_URL, FONT_PATH)
+    except Exception as e:
+        print(f"Warning: Could not download DejaVuSans font: {e}")
 
 class LecturePDF(FPDF):
     def header(self):

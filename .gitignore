@@ -26,3 +26,6 @@ backend/exported_pdfs/
 
 # Archived scripts
 backend/archive/
+
+# Font is downloaded at runtime
+backend/fonts/
