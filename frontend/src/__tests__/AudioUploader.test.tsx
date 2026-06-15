@@ -38,7 +38,7 @@ describe('AudioUploader', () => {
     const input = screen.getByLabelText('Upload') as HTMLInputElement;
 
     fireEvent.change(input, { target: { files: [file] } });
-    expect(screen.getByText('Only audio files are accepted (MP3, WAV, M4A, AAC, OGG).')).toBeInTheDocument();
+    expect(screen.getByText('Only audio/video files are accepted (MP3, WAV, M4A, AAC, OGG, MP4, AVI, MOV, MKV, WEBM).')).toBeInTheDocument();
   });
 
   it('rejects oversized file', () => {

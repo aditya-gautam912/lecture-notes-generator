@@ -147,17 +147,7 @@ function App() {
           <p>Turn your lectures into study guides in seconds.</p>
         </header>
 
-        {!data && processingState === 'idle' && !error && (
-          <AudioUploader
-            key={uploadKey}
-            onProcessingStart={handleStart}
-            onGenerateStart={handleGenerateStart}
-            onProcessingComplete={handleComplete}
-            onError={handleError}
-          />
-        )}
-
-        {!data && (processingState === 'transcribing' || processingState === 'generating') && (
+        {!data && processingState !== 'loading' && !error && (
           <AudioUploader
             key={uploadKey}
             onProcessingStart={handleStart}

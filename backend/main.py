@@ -67,12 +67,17 @@ async def transcribe_endpoint(request: Request, file: UploadFile = File(...)):
         if ext not in ALLOWED_EXTENSIONS:
             raise HTTPException(status_code=400, detail=f"File type '{ext}' not allowed. Accepted: {', '.join(ALLOWED_EXTENSIONS)}")
 
-        if file.size and file.size > MAX_FILE_SIZE:
+        if file.size is not None and file.size > MAX_FILE_SIZE:
             raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB.")
 
         file_path = os.path.join(TEMP_DIR, safe_name)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+
+        file_size = os.path.getsize(file_path)
+        if file_size > MAX_FILE_SIZE:
+            os.remove(file_path)
+            raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB.")
 
         transcript = await transcribe_audio(file_path)
         os.remove(file_path)

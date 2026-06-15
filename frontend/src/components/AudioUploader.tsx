@@ -16,6 +16,7 @@ const AudioUploader: React.FC<AudioUploaderProps> = ({ onProcessingStart, onGene
   const [file, setFile] = useState<File | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [processingPhase, setProcessingPhase] = useState<'uploading' | 'generating' | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -69,6 +70,7 @@ const AudioUploader: React.FC<AudioUploaderProps> = ({ onProcessingStart, onGene
     if (!file) return;
     onProcessingStart();
     setUploadProgress(0);
+    setProcessingPhase('uploading');
 
     const formData = new FormData();
     formData.append('file', file);
@@ -84,19 +86,15 @@ const AudioUploader: React.FC<AudioUploaderProps> = ({ onProcessingStart, onGene
 
     xhr.onload = async () => {
       if (xhr.status < 200 || xhr.status >= 300) {
+        setProcessingPhase(null);
         onError('Failed to transcribe audio');
         return;
       }
       const transcribeData = JSON.parse(xhr.responseText);
 
       onGenerateStart();
+      setProcessingPhase('generating');
       setUploadProgress(0);
-
-      let progress = 0;
-      const sim = setInterval(() => {
-        progress = Math.min(progress + Math.random() * 12, 95);
-        setUploadProgress(Math.round(progress));
-      }, 400);
 
       try {
         const generateRes = await fetch('/generate', {
@@ -108,22 +106,24 @@ const AudioUploader: React.FC<AudioUploaderProps> = ({ onProcessingStart, onGene
           }),
         });
 
-        clearInterval(sim);
-        setUploadProgress(100);
-
         if (!generateRes.ok) {
           throw new Error('Failed to generate study materials');
         }
 
         const generateData = await generateRes.json();
+        setProcessingPhase(null);
+        setUploadProgress(100);
         setTimeout(() => onProcessingComplete(generateData), 400);
       } catch (err: unknown) {
-        clearInterval(sim);
+        setProcessingPhase(null);
         onError(err instanceof Error ? err.message : 'An error occurred');
       }
     };
 
-    xhr.onerror = () => onError('Network error during upload');
+    xhr.onerror = () => {
+      setProcessingPhase(null);
+      onError('Network error during upload');
+    };
     xhr.send(formData);
   };
 
@@ -164,9 +164,13 @@ const AudioUploader: React.FC<AudioUploaderProps> = ({ onProcessingStart, onGene
         {isProcessing && (
           <div className="uploader-progress">
             <div className="progress-bar">
-              <div className="progress-bar-fill" style={{ width: `${uploadProgress}%` }} />
+              <div className={`progress-bar-fill${processingPhase === 'generating' ? ' progress-bar-fill--indeterminate' : ''}`}
+                style={processingPhase === 'uploading' ? { width: `${uploadProgress}%` } : undefined}
+              />
             </div>
-            <span className="uploader-progress-text">{uploadProgress}%</span>
+            {processingPhase === 'uploading' && (
+              <span className="uploader-progress-text">{uploadProgress}%</span>
+            )}
           </div>
         )}
 
