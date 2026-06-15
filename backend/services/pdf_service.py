@@ -1,17 +1,23 @@
 from fpdf import FPDF
 import os
+import io
+import zipfile
 import urllib.request
 
 FONT_DIR = os.path.join(os.path.dirname(__file__), '..', 'fonts')
 FONT_PATH = os.path.join(FONT_DIR, 'DejaVuSans.ttf')
-FONT_URL = "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf"
+FONT_URL = "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-sans-ttf-2.37.zip"
 
 if not os.path.isdir(FONT_DIR):
     os.makedirs(FONT_DIR)
 
 if not os.path.isfile(FONT_PATH):
     try:
-        urllib.request.urlretrieve(FONT_URL, FONT_PATH)
+        resp = urllib.request.urlopen(FONT_URL)
+        z = zipfile.ZipFile(io.BytesIO(resp.read()))
+        ttf_name = [n for n in z.namelist() if n.endswith("DejaVuSans.ttf")][0]
+        with open(FONT_PATH, "wb") as f:
+            f.write(z.read(ttf_name))
     except Exception as e:
         print(f"Warning: Could not download DejaVuSans font: {e}")
 
