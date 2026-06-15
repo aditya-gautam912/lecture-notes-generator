@@ -1,5 +1,7 @@
 import os
 import json
+import tempfile
+import math
 from groq import AsyncGroq
 from dotenv import load_dotenv
 from pydantic import BaseModel, ValidationError
@@ -8,6 +10,9 @@ from typing import List
 load_dotenv()
 
 client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
+
+CHUNK_SIZE_MB = 15
+MAX_FILE_SIZE_MB = 100
 
 class QuizItem(BaseModel):
     question: str
@@ -19,16 +24,47 @@ class StudyMaterials(BaseModel):
     notes: List[str]
     quiz: List[QuizItem]
 
+def _split_audio(file_path: str) -> List[str]:
+    try:
+        from pydub import AudioSegment
+    except ImportError:
+        return [file_path]
+
+    size_mb = os.path.getsize(file_path) / (1024 * 1024)
+    if size_mb <= CHUNK_SIZE_MB:
+        return [file_path]
+
+    audio = AudioSegment.from_file(file_path)
+    chunk_ms = int((CHUNK_SIZE_MB / size_mb) * len(audio))
+    chunks = []
+    for i in range(math.ceil(len(audio) / chunk_ms)):
+        start = i * chunk_ms
+        end = min((i + 1) * chunk_ms, len(audio))
+        segment = audio[start:end]
+        fd, path = tempfile.mkstemp(suffix='.mp3')
+        os.close(fd)
+        segment.export(path, format='mp3')
+        chunks.append(path)
+    return chunks
+
 async def transcribe_audio(file_path: str):
-    """Transcribes audio using Groq's Whisper-large-v3 model asynchronously."""
-    filename = os.path.basename(file_path)
-    with open(file_path, "rb") as file:
-        transcription = await client.audio.transcriptions.create(
-            file=(filename, file.read()),
-            model="whisper-large-v3",
-            response_format="text",
-        )
-    return transcription
+    """Transcribes audio using Groq's Whisper-large-v3, splitting large files into chunks."""
+    chunks = _split_audio(file_path)
+    transcripts = []
+
+    for chunk_path in chunks:
+        filename = os.path.basename(chunk_path)
+        with open(chunk_path, "rb") as f:
+            text = await client.audio.transcriptions.create(
+                file=(filename, f.read()),
+                model="whisper-large-v3",
+                response_format="text",
+            )
+        transcripts.append(text)
+        if chunk_path != file_path:
+            os.remove(chunk_path)
+
+    return " ".join(transcripts)
 
 async def generate_study_materials(transcript: str):
     """Generates structured notes, a summary, and a quiz from the transcript using Pydantic validation."""
