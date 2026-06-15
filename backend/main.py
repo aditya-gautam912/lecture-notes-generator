@@ -20,10 +20,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-FRONTEND_DIST = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')
-if os.path.isdir(FRONTEND_DIST):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
-
 TEMP_DIR = "temp_audio"
 PDF_DIR = "exported_pdfs"
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
@@ -126,6 +122,17 @@ async def export_pdf(lecture_id: int):
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
+
+FRONTEND_DIST = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')
+if os.path.isdir(FRONTEND_DIST):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        file_path = os.path.join(FRONTEND_DIST, full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(FRONTEND_DIST, "index.html"), media_type="text/html")
 
 if __name__ == "__main__":
     import uvicorn
