@@ -103,16 +103,18 @@ function App() {
       <aside className={`sidebar ${sidebarOpen ? 'sidebar--open' : ''}`}>
         <div className="sidebar-header">
           <h2>📚 Lecture History</h2>
-          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => {
-            setData(null);
-            setProcessingState('idle');
-            setError(null);
-            setSidebarOpen(false);
-            setUploadKey(k => k + 1);
-            window.scrollTo(0, 0);
-          }}>
-            + New Lecture
-          </button>
+          {data && (
+            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => {
+              setData(null);
+              setProcessingState('idle');
+              setError(null);
+              setSidebarOpen(false);
+              setUploadKey(k => k + 1);
+              window.scrollTo(0, 0);
+            }}>
+              + New Lecture
+            </button>
+          )}
         </div>
         <div className="history-list">
           {history.length === 0 ? (
