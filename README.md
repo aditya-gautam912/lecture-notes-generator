@@ -1,5 +1,7 @@
 # 🎓 Lecture Voice-to-Notes Generator
 
+> **Live Demo**: [https://lecture-notes-generator-jkqv.onrender.com/](https://lecture-notes-generator-jkqv.onrender.com/)
+
 An AI-powered application that converts lecture audio recordings into structured study materials, including summaries, detailed notes, and interactive quizzes.
 
 ## 🚀 Features
@@ -13,7 +15,7 @@ An AI-powered application that converts lecture audio recordings into structured
 - **Toast Notifications**: Non-intrusive success/error messages in the corner.
 - **Skeleton Loaders**: Pulsing placeholders while content loads.
 - **Responsive Sidebar**: Collapsible hamburger menu on mobile.
-- **Dark Mode**: Automatically adapts to system preference.
+- **Light Theme Only**: Clean, minimal light-colored interface.
 - **PDF Export**: Download a printable study guide.
 - **Lecture History**: Browse, load, and delete past lectures from the sidebar.
 
