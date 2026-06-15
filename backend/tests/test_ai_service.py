@@ -1,7 +1,7 @@
 import os
 import tempfile
 from unittest.mock import patch, MagicMock
-from services.ai_service import _ensure_audio, _split_audio, AUDIO_EXTENSIONS
+from services.ai_service import _ensure_audio, _split_audio, _normalize_quiz, AUDIO_EXTENSIONS
 
 
 def make_temp_file(suffix: str, content: bytes = b"data") -> str:
@@ -47,6 +47,42 @@ class TestEnsureAudio:
         assert os.path.isfile(path)
         os.remove(path)
         os.remove(result)
+
+
+class TestNormalizeQuiz:
+    def test_exact_match(self):
+        quiz = [{"question": "Q?", "options": ["Mitosis", "Meiosis"], "answer": "Mitosis"}]
+        result = _normalize_quiz(quiz)
+        assert result[0]["answer"] == "Mitosis"
+
+    def test_answer_is_letter_prefix(self):
+        quiz = [{"question": "Q?", "options": ["A. Mitosis", "B. Meiosis", "C. Budding", "D. Fission"], "answer": "A"}]
+        result = _normalize_quiz(quiz)
+        assert result[0]["answer"] == "A. Mitosis"
+
+    def test_answer_is_option_start(self):
+        quiz = [{"question": "Q?", "options": ["Binary Fission", "Mitosis Phase", "Cytokinesis"], "answer": "Mitosis"}]
+        result = _normalize_quiz(quiz)
+        assert result[0]["answer"] == "Mitosis Phase"
+
+    def test_no_match_keeps_original(self):
+        quiz = [{"question": "Q?", "options": ["Alpha", "Beta", "Gamma"], "answer": "Delta"}]
+        result = _normalize_quiz(quiz)
+        assert result[0]["answer"] == "Delta"
+
+    def test_answer_starts_with_option(self):
+        quiz = [{"question": "Q?", "options": ["Mitosis", "Meiosis"], "answer": "Mitosis involves cell division"}]
+        result = _normalize_quiz(quiz)
+        assert result[0]["answer"] == "Mitosis"
+
+    def test_multiple_questions(self):
+        quiz = [
+            {"question": "Q1?", "options": ["X. One", "Y. Two", "Z. Three"], "answer": "Y"},
+            {"question": "Q2?", "options": ["Red", "Blue", "Green"], "answer": "Blue"},
+        ]
+        result = _normalize_quiz(quiz)
+        assert result[0]["answer"] == "Y. Two"
+        assert result[1]["answer"] == "Blue"
 
 
 class TestSplitAudio:

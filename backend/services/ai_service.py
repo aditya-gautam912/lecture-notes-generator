@@ -101,11 +101,13 @@ async def generate_study_materials(transcript: str):
         "quiz": [
             {{
                 "question": "...",
-                "options": ["A", "B", "C", "D"],
-                "answer": "..."
+                "options": ["Full text of correct answer", "Full text of wrong option 1", "Full text of wrong option 2", "Full text of wrong option 3"],
+                "answer": "Full text of correct answer"
             }}
         ]
     }}
+
+    IMPORTANT: The "answer" must be the EXACT full text of one of the "options" — do not use letters like "A" or "B" as the answer. The answer must match the option text verbatim.
 
     Transcript:
     {transcript}
@@ -124,7 +126,26 @@ async def generate_study_materials(transcript: str):
     try:
         parsed_json = json.loads(content)
         materials = StudyMaterials(**parsed_json)
-        return materials.model_dump()
+        result = materials.model_dump()
+        result["quiz"] = _normalize_quiz(result.get("quiz", []))
+        return result
     except (json.JSONDecodeError, ValidationError) as e:
         print(f"Validation error: {e}")
         raise ValueError("Failed to generate valid study materials from the AI response.")
+
+
+def _normalize_quiz(quiz: list[dict]) -> list[dict]:
+    for item in quiz:
+        options = item.get("options", [])
+        answer = item.get("answer", "")
+        if answer in options:
+            continue
+        for opt in options:
+            if opt.startswith(answer) or answer.startswith(opt):
+                item["answer"] = opt
+                break
+            prefix = opt.split(".")[0].split(")")[0].strip()
+            if prefix and len(prefix) == 1 and answer == prefix:
+                item["answer"] = opt
+                break
+    return quiz
