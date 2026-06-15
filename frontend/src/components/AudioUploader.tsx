@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import type { StudyData } from '../types';
 
-const ACCEPTED_TYPES = ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/ogg'];
+const ACCEPTED_TYPES = ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/ogg', 'video/mp4'];
 const MAX_SIZE_MB = 100;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
@@ -141,7 +141,7 @@ const AudioUploader: React.FC<AudioUploaderProps> = ({ onProcessingStart, onGene
         <span className="uploader-icon">{dragOver ? '📂' : '🎤'}</span>
         <h2>Upload Lecture Audio</h2>
         <p>Drag & drop an audio file here, or click to browse.</p>
-        <p className="uploader-hint">Supports MP3, WAV, M4A, AAC, OGG &mdash; max {MAX_SIZE_MB}MB</p>
+        <p className="uploader-hint">Supports MP3, WAV, M4A, AAC, OGG, MP4 &mdash; max {MAX_SIZE_MB}MB</p>
 
         <input
           ref={inputRef}

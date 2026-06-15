@@ -23,7 +23,7 @@ app.add_middleware(
 TEMP_DIR = "temp_audio"
 PDF_DIR = "exported_pdfs"
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
-ALLOWED_EXTENSIONS = {'.mp3', '.wav', '.m4a', '.aac', '.ogg'}
+ALLOWED_EXTENSIONS = {'.mp3', '.wav', '.m4a', '.aac', '.ogg', '.mp4'}
 os.makedirs(TEMP_DIR, exist_ok=True)
 os.makedirs(PDF_DIR, exist_ok=True)
 
