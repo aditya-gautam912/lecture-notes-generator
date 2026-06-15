@@ -1,76 +1,181 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
+import type { StudyData } from '../types';
+
+const ACCEPTED_TYPES = ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/ogg'];
+const MAX_SIZE_MB = 100;
+const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
 interface AudioUploaderProps {
   onProcessingStart: () => void;
   onGenerateStart: () => void;
-  onProcessingComplete: (data: any) => void;
+  onProcessingComplete: (data: StudyData) => void;
   onError: (error: string) => void;
 }
 
 const AudioUploader: React.FC<AudioUploaderProps> = ({ onProcessingStart, onGenerateStart, onProcessingComplete, onError }) => {
   const [file, setFile] = useState<File | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const validateFile = useCallback((f: File): boolean => {
+    setValidationError(null);
+    if (!ACCEPTED_TYPES.includes(f.type)) {
+      setValidationError('Only audio files are accepted (MP3, WAV, M4A, AAC, OGG).');
+      return false;
+    }
+    if (f.size > MAX_SIZE_BYTES) {
+      setValidationError(`File too large. Maximum size is ${MAX_SIZE_MB}MB.`);
+      return false;
+    }
+    return true;
+  }, []);
+
+  const handleFile = useCallback((f: File) => {
+    if (validateFile(f)) {
+      setFile(f);
+    } else {
+      setFile(null);
+    }
+  }, [validateFile]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFile(e.target.files[0]);
-    }
+    const selected = e.target.files?.[0];
+    if (selected) handleFile(selected);
   };
 
-  const handleUpload = async () => {
-    if (!file) return;
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(true);
+  };
 
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    const dropped = e.dataTransfer.files?.[0];
+    if (dropped) handleFile(dropped);
+  };
+
+  const handleUpload = () => {
+    if (!file) return;
     onProcessingStart();
+    setUploadProgress(0);
 
     const formData = new FormData();
     formData.append('file', file);
 
-    try {
-      // Step 1: Transcribe audio
-      const transcribeRes = await fetch('http://localhost:8000/transcribe', {
-        method: 'POST',
-        body: formData,
-      });
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/transcribe');
 
-      if (!transcribeRes.ok) {
-        throw new Error('Failed to transcribe audio');
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        setUploadProgress(Math.round((e.loaded / e.total) * 100));
       }
-      
-      const transcribeData = await transcribeRes.json();
+    };
 
-      // Step 2: Generate notes
+    xhr.onload = async () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        onError('Failed to transcribe audio');
+        return;
+      }
+      const transcribeData = JSON.parse(xhr.responseText);
+
       onGenerateStart();
+      setUploadProgress(0);
 
-      const generateRes = await fetch('http://localhost:8000/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          filename: transcribeData.filename,
-          transcript: transcribeData.transcript
-        }),
-      });
+      let progress = 0;
+      const sim = setInterval(() => {
+        progress = Math.min(progress + Math.random() * 12, 95);
+        setUploadProgress(Math.round(progress));
+      }, 400);
 
-      if (!generateRes.ok) {
-        throw new Error('Failed to generate study materials');
+      try {
+        const generateRes = await fetch('/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: transcribeData.filename,
+            transcript: transcribeData.transcript,
+          }),
+        });
+
+        clearInterval(sim);
+        setUploadProgress(100);
+
+        if (!generateRes.ok) {
+          throw new Error('Failed to generate study materials');
+        }
+
+        const generateData = await generateRes.json();
+        setTimeout(() => onProcessingComplete(generateData), 400);
+      } catch (err: unknown) {
+        clearInterval(sim);
+        onError(err instanceof Error ? err.message : 'An error occurred');
       }
+    };
 
-      const generateData = await generateRes.json();
-      onProcessingComplete(generateData);
-
-    } catch (err: any) {
-      onError(err.message || 'An error occurred');
-    }
+    xhr.onerror = () => onError('Network error during upload');
+    xhr.send(formData);
   };
 
+  const isProcessing = uploadProgress > 0;
+
   return (
-    <div className="uploader-container">
-      <h2>Upload Lecture Audio</h2>
-      <p>Select an MP3, WAV, or M4A file from your lecture.</p>
-      <input type="file" accept="audio/*" onChange={handleFileChange} />
-      <button onClick={handleUpload} disabled={!file}>
-        Generate Study Notes
-      </button>
+    <div
+      className={`uploader-container ${dragOver ? 'uploader-container--dragover' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onClick={() => !isProcessing && inputRef.current?.click()}
+    >
+      <div className="uploader-content">
+        <span className="uploader-icon">{dragOver ? '📂' : '🎤'}</span>
+        <h2>Upload Lecture Audio</h2>
+        <p>Drag & drop an audio file here, or click to browse.</p>
+        <p className="uploader-hint">Supports MP3, WAV, M4A, AAC, OGG &mdash; max {MAX_SIZE_MB}MB</p>
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept="audio/*"
+          onChange={handleFileChange}
+          aria-label="Upload"
+          style={{ display: 'none' }}
+        />
+
+        {file && !isProcessing && (
+          <div className="uploader-file">
+            <span>📄 {file.name}</span>
+            <span className="uploader-file-size">{(file.size / (1024 * 1024)).toFixed(1)}MB</span>
+          </div>
+        )}
+
+        {validationError && <p className="validation-error">{validationError}</p>}
+
+        {isProcessing && (
+          <div className="uploader-progress">
+            <div className="progress-bar">
+              <div className="progress-bar-fill" style={{ width: `${uploadProgress}%` }} />
+            </div>
+            <span className="uploader-progress-text">{uploadProgress}%</span>
+          </div>
+        )}
+
+        {!isProcessing && (
+          <button className="btn btn-primary" disabled={!file} onClick={(e) => { e.stopPropagation(); handleUpload(); }}>
+            Generate Study Notes
+          </button>
+        )}
+      </div>
     </div>
   );
 };

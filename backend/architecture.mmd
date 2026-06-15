@@ -1,0 +1,42 @@
+graph TD
+    %% Define Styles
+    classDef frontend fill:#61dafb,stroke:#333,stroke-width:2px,color:#000
+    classDef backend fill:#38b2ac,stroke:#333,stroke-width:2px,color:#000
+    classDef ai fill:#f6821f,stroke:#333,stroke-width:2px,color:#000
+    classDef db fill:#003b57,stroke:#333,stroke-width:2px,color:#fff
+    classDef user fill:#fff,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+
+    %% Nodes
+    U((Student / User)):::user
+    
+    subgraph Frontend [React Application]
+        UI[Audio Uploader UI]:::frontend
+        View[Notes & Quiz Viewer]:::frontend
+    end
+    
+    subgraph Backend [FastAPI Server]
+        API_Transcribe[/POST /transcribe/]:::backend
+        API_Generate[/POST /generate/]:::backend
+        Pydantic{Pydantic Validation}:::backend
+    end
+    
+    subgraph External APIs [Groq Cloud]
+        Whisper[Whisper-large-v3<br>Speech-to-Text]:::ai
+        Llama[Llama-3.3-70b<br>LLM Processing]:::ai
+    end
+    
+    DB[(SQLite Database<br>SQLAlchemy)]:::db
+
+    %% Connections
+    U -- Uploads Audio File --> UI
+    UI -- Sends Audio Data --> API_Transcribe
+    API_Transcribe -- Async Request --> Whisper
+    Whisper -- Returns Transcript --> API_Transcribe
+    API_Transcribe -- Transcript Response --> UI
+    
+    UI -- Sends Transcript --> API_Generate
+    API_Generate -- Prompt & Transcript --> Llama
+    Llama -- JSON (Summary, Notes, Quiz) --> Pydantic
+    Pydantic -- Validated Data --> DB
+    Pydantic -- Returns Materials --> View
+    View -- Displays Study Guide --> U

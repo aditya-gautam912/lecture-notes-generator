@@ -1,0 +1,42 @@
+graph LR
+    classDef user fill:#f9f9f9,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+    classDef frontend fill:#61dafb,stroke:#333,stroke-width:2px,color:#000
+    classDef backend fill:#2ca58d,stroke:#333,stroke-width:2px,color:#fff
+    classDef ai fill:#f6821f,stroke:#333,stroke-width:2px,color:#000
+    classDef db fill:#003b57,stroke:#333,stroke-width:2px,color:#fff
+
+    U((User)):::user
+
+    subgraph Frontend [Frontend - React]
+        direction TB
+        UI[Audio Uploader UI]:::frontend
+        View[Study Viewer]:::frontend
+    end
+
+    subgraph Backend [Backend - FastAPI]
+        direction TB
+        Transcribe[/POST /transcribe/]:::backend
+        Generate[/POST /generate/]:::backend
+        Val{Pydantic Validation}:::backend
+    end
+
+    subgraph AI [AI Models - Groq]
+        direction TB
+        Whisper[Whisper Large v3]:::ai
+        Llama[Llama 3.3 70B]:::ai
+    end
+
+    DB[(SQLite)]:::db
+
+    U -- "Upload Audio" --> UI
+    UI -- "Send Audio" --> Transcribe
+    Transcribe -- "Speech-to-Text" --> Whisper
+    Whisper -- "Transcript" --> Transcribe
+    Transcribe -. "Return" .-> UI
+    
+    UI -- "Request Notes" --> Generate
+    Generate -- "Prompt" --> Llama
+    Llama -- "Raw JSON" --> Val
+    Val -- "Save" --> DB
+    Val -- "Return" --> View
+    View -- "Display" --> U

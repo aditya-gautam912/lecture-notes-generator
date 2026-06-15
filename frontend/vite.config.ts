@@ -1,7 +1,21 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: {
+      '/transcribe': 'http://localhost:8000',
+      '/generate': 'http://localhost:8000',
+      '/history': 'http://localhost:8000',
+      '/export-pdf': 'http://localhost:8000',
+      '/health': 'http://localhost:8000',
+    },
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/__tests__/setup.ts',
+  },
 })

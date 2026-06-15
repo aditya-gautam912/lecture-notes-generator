@@ -7,16 +7,24 @@ An AI-powered application that converts lecture audio recordings into structured
 - **Audio Transcription**: Uses Groq's `whisper-large-v3` for near-instant, high-accuracy transcription.
 - **Smart Summarization**: Summarizes long lectures into concise, readable points using `llama-3.3-70b-versatile`.
 - **Study Notes**: Automatically generates bulleted study notes from the transcript.
-- **Interactive Quizzes**: Creates a 5-question multiple-choice quiz to test your understanding of the lecture.
-- **Student-Centric UI**: A clean, minimalist interface built with React and TypeScript.
+- **Interactive Quiz**: Clickable multiple-choice quiz with instant feedback and scoring.
+- **Drag & Drop Upload**: Drag audio files directly onto the upload area.
+- **Real-Time Progress**: Upload percentage via XHR, simulated progress for AI processing stages.
+- **Toast Notifications**: Non-intrusive success/error messages in the corner.
+- **Skeleton Loaders**: Pulsing placeholders while content loads.
+- **Responsive Sidebar**: Collapsible hamburger menu on mobile.
+- **Dark Mode**: Automatically adapts to system preference.
+- **PDF Export**: Download a printable study guide.
+- **Lecture History**: Browse, load, and delete past lectures from the sidebar.
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React, TypeScript, Vite, Vanilla CSS.
-- **Backend**: FastAPI (Python), Uvicorn.
+- **Frontend**: React, TypeScript, Vite, Vanilla CSS (custom design system with CSS custom properties).
+- **Backend**: FastAPI (Python), Uvicorn, SQLAlchemy, SQLite.
 - **AI Models**: 
   - Transcription: [Groq Whisper Large V3](https://groq.com/)
   - Text Processing: [Groq Llama 3.3 70B Versatile](https://groq.com/)
+- **Testing**: Vitest (frontend), pytest + FastAPI TestClient (backend).
 
 ## 📋 Prerequisites
 
@@ -67,12 +75,31 @@ An AI-powered application that converts lecture audio recordings into structured
    npm run dev
    ```
 
+The Vite dev server proxies API requests to the backend (see `vite.config.ts`).
+
 ## 📖 Usage
 
 1. Open your browser to `http://localhost:5173`.
-2. Upload a lecture audio file (MP3, WAV, or M4A).
-3. Wait for the AI to process the audio.
-4. View your generated transcript, summary, study notes, and quiz!
+2. Drag an audio file onto the upload area or click to browse (MP3, WAV, M4A, AAC, OGG — max 100MB).
+3. Watch the real-time progress bar during upload and AI processing.
+4. View your generated transcript, summary, study notes, and interactive quiz.
+5. Click quiz answers to select, submit to see your score, and retry if desired.
+6. Browse past lectures in the sidebar and download PDF study guides.
+
+## 🧪 Running Tests
+
+### Backend
+```bash
+cd backend
+venv\Scripts\activate   # or source venv/bin/activate
+python -m pytest tests/ -v
+```
+
+### Frontend
+```bash
+cd frontend
+npm test
+```
 
 ## 🛡️ Security
 

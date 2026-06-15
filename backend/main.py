@@ -22,6 +22,8 @@ app.add_middleware(
 
 TEMP_DIR = "temp_audio"
 PDF_DIR = "exported_pdfs"
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
+ALLOWED_EXTENSIONS = {'.mp3', '.wav', '.m4a', '.aac', '.ogg'}
 os.makedirs(TEMP_DIR, exist_ok=True)
 os.makedirs(PDF_DIR, exist_ok=True)
 
@@ -37,19 +39,26 @@ class GenerateRequest(BaseModel):
 async def transcribe_endpoint(file: UploadFile = File(...)):
     file_path = None
     try:
-        # 1. Save uploaded file temporarily
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(status_code=400, detail=f"File type '{ext}' not allowed. Accepted: {', '.join(ALLOWED_EXTENSIONS)}")
+
+        if file.size and file.size > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail=f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB.")
+
         file_path = os.path.join(TEMP_DIR, file.filename)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # 2. Transcribe (async)
         transcript = await transcribe_audio(file_path)
-
-        # 3. Clean up temp file
         os.remove(file_path)
 
         return {"transcript": transcript, "filename": file.filename}
 
+    except HTTPException:
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+        raise
     except Exception as e:
         print(f"Error during transcription: {str(e)}")
         if file_path and os.path.exists(file_path):
@@ -71,6 +80,8 @@ async def generate_endpoint(req: GenerateRequest):
             "materials": study_materials,
             "filename": req.filename
         }
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error during generation: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
