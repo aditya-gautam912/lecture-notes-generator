@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import type { StudyData } from '../types';
 
-const ACCEPTED_TYPES = ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/ogg', 'video/mp4'];
+const ACCEPTED_TYPES = ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/ogg', 'video/mp4', 'video/x-msvideo', 'video/quicktime', 'video/x-matroska', 'video/webm', 'video/x-flv'];
 const MAX_SIZE_MB = 100;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
@@ -22,7 +22,7 @@ const AudioUploader: React.FC<AudioUploaderProps> = ({ onProcessingStart, onGene
   const validateFile = useCallback((f: File): boolean => {
     setValidationError(null);
     if (!ACCEPTED_TYPES.includes(f.type)) {
-      setValidationError('Only audio files are accepted (MP3, WAV, M4A, AAC, OGG).');
+      setValidationError('Only audio/video files are accepted (MP3, WAV, M4A, AAC, OGG, MP4, AVI, MOV, MKV, WEBM).');
       return false;
     }
     if (f.size > MAX_SIZE_BYTES) {
@@ -140,13 +140,13 @@ const AudioUploader: React.FC<AudioUploaderProps> = ({ onProcessingStart, onGene
       <div className="uploader-content">
         <span className="uploader-icon">{dragOver ? '📂' : '🎤'}</span>
         <h2>Upload Lecture Audio</h2>
-        <p>Drag & drop an audio file here, or click to browse.</p>
-        <p className="uploader-hint">Supports MP3, WAV, M4A, AAC, OGG, MP4 &mdash; max {MAX_SIZE_MB}MB</p>
+        <p>Drag & drop an audio/video file here, or click to browse.</p>
+        <p className="uploader-hint">Supports MP3, WAV, M4A, AAC, OGG, MP4, AVI, MOV, MKV, WEBM &mdash; max {MAX_SIZE_MB}MB</p>
 
         <input
           ref={inputRef}
           type="file"
-          accept="audio/*"
+          accept="audio/*,video/*"
           onChange={handleFileChange}
           aria-label="Upload"
           style={{ display: 'none' }}

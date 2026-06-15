@@ -26,7 +26,7 @@ app.add_middleware(
 TEMP_DIR = "temp_audio"
 PDF_DIR = "exported_pdfs"
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB
-ALLOWED_EXTENSIONS = {'.mp3', '.wav', '.m4a', '.aac', '.ogg', '.mp4'}
+ALLOWED_EXTENSIONS = {'.mp3', '.wav', '.m4a', '.aac', '.ogg', '.mp4', '.avi', '.mov', '.mkv', '.webm', '.flv'}
 RATE_LIMIT = 10  # requests per window
 RATE_WINDOW = 60  # seconds
 MAX_TRANSCRIPT_LEN = 100000

@@ -13,6 +13,8 @@ client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
 CHUNK_SIZE_MB = 15
 MAX_FILE_SIZE_MB = 100
+VIDEO_EXTENSIONS = {'.avi', '.mov', '.mkv', '.webm', '.flv'}
+AUDIO_EXTENSIONS = {'.mp3', '.wav', '.m4a', '.aac', '.ogg'}
 
 class QuizItem(BaseModel):
     question: str
@@ -47,9 +49,24 @@ def _split_audio(file_path: str) -> List[str]:
         chunks.append(path)
     return chunks
 
+def _ensure_audio(file_path: str) -> str:
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext in AUDIO_EXTENSIONS:
+        return file_path
+    try:
+        from pydub import AudioSegment
+        audio = AudioSegment.from_file(file_path)
+        fd, path = tempfile.mkstemp(suffix='.mp3')
+        os.close(fd)
+        audio.export(path, format='mp3')
+        return path
+    except ImportError:
+        return file_path
+
 async def transcribe_audio(file_path: str):
-    """Transcribes audio using Groq's Whisper-large-v3, splitting large files into chunks."""
-    chunks = _split_audio(file_path)
+    """Transcribes audio using Groq's Whisper-large-v3, extracting audio from video and splitting large files."""
+    audio_path = _ensure_audio(file_path)
+    chunks = _split_audio(audio_path)
     transcripts = []
 
     for chunk_path in chunks:
@@ -61,8 +78,11 @@ async def transcribe_audio(file_path: str):
                 response_format="text",
             )
         transcripts.append(text)
-        if chunk_path != file_path:
+        if chunk_path != audio_path:
             os.remove(chunk_path)
+
+    if audio_path != file_path:
+        os.remove(audio_path)
 
     return " ".join(transcripts)
 
