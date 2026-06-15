@@ -392,6 +392,11 @@
   text-align: center;
 }
 
+.quiz-option-correct-label {
+  font-weight: 600;
+  color: var(--success);
+}
+
 .quiz-item {
   padding: 1rem;
   margin-bottom: 1rem;

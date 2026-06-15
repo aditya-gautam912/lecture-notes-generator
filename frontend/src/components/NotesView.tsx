@@ -88,9 +88,10 @@ const NotesView: React.FC<NotesViewProps> = ({ data }) => {
                       disabled={submitted}
                     >
                       <span className="quiz-option-radio">
-                        {selected === opt ? '●' : '○'}
+                        {submitted && opt === item.answer ? '✓' : submitted && opt === selected && opt !== item.answer ? '✗' : selected === opt ? '●' : '○'}
                       </span>
                       {opt}
+                      {submitted && opt === item.answer && <span className="quiz-option-correct-label"> (Correct)</span>}
                     </button>
                   );
                 })}
