@@ -3,6 +3,7 @@ import json
 import tempfile
 import math
 from groq import AsyncGroq
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from pydantic import BaseModel, ValidationError
 from typing import List
@@ -14,12 +15,12 @@ TRANSCRIBE_BASE_URL = os.getenv("TRANSCRIBE_BASE_URL", "https://api.groq.com/ope
 TRANSCRIBE_API_KEY = os.getenv("TRANSCRIBE_API_KEY", os.getenv("GROQ_API_KEY"))
 transcribe_client = AsyncGroq(api_key=TRANSCRIBE_API_KEY, base_url=TRANSCRIBE_BASE_URL)
 
-# Generation client (chat) - configurable to any OpenAI-compatible provider
+# Generation client (chat) - OpenAI-compatible provider (Groq, OpenRouter, etc.)
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
 LLM_API_KEY = os.getenv("LLM_API_KEY", os.getenv("GROQ_API_KEY"))
-client = AsyncGroq(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
+client = AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
 
-LLM_MODELS = [m for m in os.getenv("GROQ_LLM_MODEL", "llama-3.1-8b-instant,llama-3.2-3b-preview,llama-3.2-1b-preview,gemma2-9b-it,meta-llama/llama-3.1-8b-instruct:free,google/gemma-2-9b-it:free").split(",") if m]
+LLM_MODELS = [m for m in os.getenv("GROQ_LLM_MODEL", "minimax/minimax-m3:free,google/gemma-4-26b-a4b-it:free,z-ai/glm-5.2:free,minimax/minimax-m2.7:free").split(",") if m]
 
 CHUNK_SIZE_MB = 15
 MAX_FILE_SIZE_MB = 100
@@ -134,23 +135,34 @@ async def generate_study_materials(transcript: str):
                 ],
                 response_format={"type": "json_object"}
             )
-            break
+            content = completion.choices[0].message.content
+            parsed_json = _extract_json(content)
+            materials = StudyMaterials(**parsed_json)
+            result = materials.model_dump()
+            result["quiz"] = _normalize_quiz(result.get("quiz", []))
+            return result
         except Exception as e:
             last_error = e
             print(f"Model {model} failed: {e}")
-    else:
-        raise ValueError(f"All LLM models failed. Last error: {last_error}")
-    
-    content = completion.choices[0].message.content
-    try:
-        parsed_json = json.loads(content)
-        materials = StudyMaterials(**parsed_json)
-        result = materials.model_dump()
-        result["quiz"] = _normalize_quiz(result.get("quiz", []))
-        return result
-    except (json.JSONDecodeError, ValidationError) as e:
-        print(f"Validation error: {e}")
-        raise ValueError("Failed to generate valid study materials from the AI response.")
+    raise ValueError(f"All LLM models failed. Last error: {last_error}")
+
+
+def _extract_json(content: str) -> dict:
+    if content is None:
+        raise ValueError("Empty AI response")
+    text = content.strip()
+    # Strip ```json ... ``` or ``` ... ``` code fences
+    if text.startswith("```"):
+        text = text.split("```", 2)[1]
+        if text.lstrip().startswith("json"):
+            text = text.lstrip()[4:]
+        text = text.strip()
+    # Fallback: extract the first balanced {...} block
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        text = text[start:end + 1]
+    return json.loads(text)
 
 
 def _normalize_quiz(quiz: list[dict]) -> list[dict]:
