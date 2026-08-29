@@ -9,9 +9,17 @@ from typing import List
 
 load_dotenv()
 
-client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
+# Transcription client (audio) - Groq only (OpenRouter has no audio API)
+TRANSCRIBE_BASE_URL = os.getenv("TRANSCRIBE_BASE_URL", "https://api.groq.com/openai/v1")
+TRANSCRIBE_API_KEY = os.getenv("TRANSCRIBE_API_KEY", os.getenv("GROQ_API_KEY"))
+transcribe_client = AsyncGroq(api_key=TRANSCRIBE_API_KEY, base_url=TRANSCRIBE_BASE_URL)
 
-LLM_MODELS = [m for m in os.getenv("GROQ_LLM_MODEL", "llama-3.1-8b-instant,llama-3.2-3b-preview,llama-3.2-1b-preview,gemma2-9b-it,llama-3.2-11b-vision-preview").split(",") if m]
+# Generation client (chat) - configurable to any OpenAI-compatible provider
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
+LLM_API_KEY = os.getenv("LLM_API_KEY", os.getenv("GROQ_API_KEY"))
+client = AsyncGroq(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
+
+LLM_MODELS = [m for m in os.getenv("GROQ_LLM_MODEL", "llama-3.1-8b-instant,llama-3.2-3b-preview,llama-3.2-1b-preview,gemma2-9b-it,meta-llama/llama-3.1-8b-instruct:free,google/gemma-2-9b-it:free").split(",") if m]
 
 CHUNK_SIZE_MB = 15
 MAX_FILE_SIZE_MB = 100
@@ -74,7 +82,7 @@ async def transcribe_audio(file_path: str):
     for chunk_path in chunks:
         filename = os.path.basename(chunk_path)
         with open(chunk_path, "rb") as f:
-            text = await client.audio.transcriptions.create(
+            text = await transcribe_client.audio.transcriptions.create(
                 file=(filename, f.read()),
                 model="whisper-large-v3",
                 response_format="text",
