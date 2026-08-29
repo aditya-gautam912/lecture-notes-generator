@@ -11,6 +11,8 @@ load_dotenv()
 
 client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
+LLM_MODEL = os.getenv("GROQ_LLM_MODEL", "llama-3.1-8b-instant")
+
 CHUNK_SIZE_MB = 15
 MAX_FILE_SIZE_MB = 100
 VIDEO_EXTENSIONS = {'.avi', '.mov', '.mkv', '.webm', '.flv'}
@@ -114,7 +116,7 @@ async def generate_study_materials(transcript: str):
     """
 
     completion = await client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=LLM_MODEL,
         messages=[
             {"role": "system", "content": "You are a helpful academic assistant."},
             {"role": "user", "content": prompt}
