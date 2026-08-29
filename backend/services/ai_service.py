@@ -11,7 +11,7 @@ load_dotenv()
 
 client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
-LLM_MODEL = os.getenv("GROQ_LLM_MODEL", "llama-3.1-8b-instant")
+LLM_MODELS = [m for m in os.getenv("GROQ_LLM_MODEL", "llama-3.1-8b-instant,llama-3.2-3b-preview,llama-3.2-1b-preview,gemma2-9b-it,llama-3.2-11b-vision-preview").split(",") if m]
 
 CHUNK_SIZE_MB = 15
 MAX_FILE_SIZE_MB = 100
@@ -115,14 +115,23 @@ async def generate_study_materials(transcript: str):
     {transcript}
     """
 
-    completion = await client.chat.completions.create(
-        model=LLM_MODEL,
-        messages=[
-            {"role": "system", "content": "You are a helpful academic assistant."},
-            {"role": "user", "content": prompt}
-        ],
-        response_format={"type": "json_object"}
-    )
+    last_error = None
+    for model in LLM_MODELS:
+        try:
+            completion = await client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": "You are a helpful academic assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={"type": "json_object"}
+            )
+            break
+        except Exception as e:
+            last_error = e
+            print(f"Model {model} failed: {e}")
+    else:
+        raise ValueError(f"All LLM models failed. Last error: {last_error}")
     
     content = completion.choices[0].message.content
     try:
