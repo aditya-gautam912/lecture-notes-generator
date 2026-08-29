@@ -11,7 +11,8 @@ from typing import List
 load_dotenv()
 
 # Transcription client (audio) - Groq only (OpenRouter has no audio API)
-TRANSCRIBE_BASE_URL = os.getenv("TRANSCRIBE_BASE_URL", "https://api.groq.com/openai/v1")
+# Note: Groq SDK appends "/openai/v1" itself, so base_url must be the host root.
+TRANSCRIBE_BASE_URL = os.getenv("TRANSCRIBE_BASE_URL", "https://api.groq.com")
 TRANSCRIBE_API_KEY = os.getenv("TRANSCRIBE_API_KEY", os.getenv("GROQ_API_KEY"))
 transcribe_client = AsyncGroq(api_key=TRANSCRIBE_API_KEY, base_url=TRANSCRIBE_BASE_URL)
 
