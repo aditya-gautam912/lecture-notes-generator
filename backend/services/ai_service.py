@@ -21,7 +21,21 @@ LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
 LLM_API_KEY = os.getenv("LLM_API_KEY", os.getenv("GROQ_API_KEY"))
 client = AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
 
-LLM_MODELS = [m for m in os.getenv("GROQ_LLM_MODEL", "minimax/minimax-m3:free,google/gemma-4-26b-a4b-it:free,z-ai/glm-5.2:free,minimax/minimax-m2.7:free").split(",") if m]
+# Known-good OpenRouter free models (probed working). Free-model availability churns fast,
+# so these defaults are always appended after any GROQ_LLM_MODEL override — a stale env var
+# can never leave us with an all-broken list.
+DEFAULT_LLM_MODELS = [
+    "cohere/north-mini-code:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "liquid/lfm-2.5-2.6b:free",
+    "google/gemma-4-31b-it:free",
+]
+
+LLM_MODELS = list(dict.fromkeys(
+    [m.strip() for m in os.getenv("GROQ_LLM_MODEL", "").split(",") if m.strip()]
+    + DEFAULT_LLM_MODELS
+))
 
 CHUNK_SIZE_MB = 15
 MAX_FILE_SIZE_MB = 100
